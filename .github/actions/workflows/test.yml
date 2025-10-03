@@ -1,0 +1,37 @@
+name: Test
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+    branches: [main]
+
+jobs:
+  send-notification:
+    if: github.event_name != 'pull_request' && success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Get commit author email
+        id: author
+        run: |
+          AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
+          AUTHOR_NAME=$(git log -1 --pretty=format:'%an')
+          echo "author_email=$AUTHOR_EMAIL" >> $GITHUB_OUTPUT
+          echo "author_name=$AUTHOR_NAME" >> $GITHUB_OUTPUT
+
+      - name: Get PR info from commit message
+        if: ${{ github.event_name != 'pull_request' }}
+        id: pr-info
+        run: |
+          COMMIT_MSG="${{ github.event.merge_group.head_commit.message }}"
+          PR_TITLE=$(echo "$COMMIT_MSG" | head -1)
+          PR_NUMBER=$(echo "$COMMIT_MSG" | grep -o '#[0-9]\+' | head -1 | sed 's/#//')
+          echo "pr_title=$PR_TITLE" >> $GITHUB_OUTPUT
+          echo "pr_number=${PR_NUMBER:-N/A}" >> $GITHUB_OUTPUT
+
+      - name: echo
+        run: |
+          echo "email: ${{ steps.author.outputs.author_email }}, title: ${{ github.event.pull_request.title }}"
